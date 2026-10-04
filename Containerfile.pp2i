@@ -36,14 +36,17 @@ RUN curl -fLo /usr/bin/appimagetool \
 
 RUN pip3 install --break-system-packages lcov_cobertura==${LCOV_COBERTURA_VERSION}
 
-RUN echo -e 'set(CMAKE_SYSTEM_NAME Windows) \
-	set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc) \
-	set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++) \
-	set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres) \
-	set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32) \
-	set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER) \
-	set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY) \
-	set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)' > /tmp/mingw64.cmake
+RUN printf '%s\n' \
+        'set(CMAKE_SYSTEM_NAME Windows)' \
+        'set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)' \
+        'set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)' \
+        'set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)' \
+        'set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)' \
+        'set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)' \
+        'set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)' \
+        'set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)' \
+        > /tmp/mingw64.cmake && \
+    cat /tmp/mingw64.cmake
 
 RUN git clone --depth 1 --branch ${EMSDK_VERSION} https://github.com/emscripten-core/emsdk.git /opt/emsdk && \
     cd /opt/emsdk && \
