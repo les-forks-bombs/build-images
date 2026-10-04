@@ -1,137 +1,135 @@
- 	FROM ubuntu:24.04 		
-	
-		
-	ENV DEBIAN_FRONTEND=noninteractive 		
-	
-		
-	SHELL ["/bin/bash", "-c"] 		
-	
-		
-	RUN apt-get update && apt-get install -y --no-install-recommends \ 		
-	    bear clang clang-format clang-tidy cmake curl doxygen git llvm make ninja-build \ 		
-	    mingw-w64 python3-pip plantuml wine wine64 ca-certificates pkg-config xz-utils \ 		
-	     libfreetype-dev libharfbuzz-dev libasound2-dev libpulse-dev \ 		
-	    libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev \ 		
-	    libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libwayland-dev \ 		
-	    wayland-protocols libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev \ 		
-	    libgles2-mesa-dev libegl1-mesa-dev libvulkan-dev libdbus-1-dev libibus-1.0-dev \ 		
-	    libudev-dev libusb-1.0-0-dev libfribidi-dev libthai-dev lld lld-18 \ 		
-	    file libclang-rt-18-dev \ 		
-	    fuse \ 		
-	    gdb\ 		
-	    && rm -rf /var/lib/apt/lists/* 		
-	
-		
-	RUN curl -Lo /usr/bin/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage && \ 		
-	    chmod +x /usr/bin/appimagetool 		
-	
-		
-	RUN pip3 install --break-system-packages lcov_cobertura 		
-	
-		
-	RUN echo -e 'set(CMAKE_SYSTEM_NAME Windows)\n\ 		
-	set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)\n\ 		
-	set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)\n\ 		
-	set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)\n\ 		
-	set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)\n\ 		
-	set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)\n\ 		
-	set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)\n\ 		
-	set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)' > /tmp/mingw64.cmake 		
-	
-		
-	RUN git clone https://github.com/emscripten-core/emsdk.git /opt/emsdk && \ 		
-	    cd /opt/emsdk && \ 		
-	    ./emsdk install latest && \ 		
-	    ./emsdk activate latest 		
-	
-		
-	ENV PATH="/opt/emsdk:/opt/emsdk/node/22.16.0_64bit/bin:/opt/emsdk/upstream/emscripten:${PATH}" 		
-	
-		
-	RUN git clone --depth 1 https://github.com/libsdl-org/SDL.git /tmp/SDL3 && \ 		
-	    cd /tmp/SDL3 && \ 		
-	    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF && \ 		
-	    cmake --build build-native --parallel $(nproc) && \ 		
-	    cmake --install build-native && \ 		
-	    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF && \ 		
-	    cmake --build build-w64 --parallel $(nproc) && \ 		
-	    cmake --install build-w64 && \ 		
-	    source /opt/emsdk/emsdk_env.sh && \ 		
-	    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF && \ 		
-	    cmake --build build-wasm --parallel $(nproc) && \ 		
-	    cmake --install build-wasm && \ 		
-	    rm -rf /tmp/SDL3 		
-	
-		
-	RUN git clone --depth 1 https://github.com/libsdl-org/SDL_image.git /tmp/SDL3_image && \ 		
-	    cd /tmp/SDL3_image && \ 		
-	    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF && \ 		
-	    cmake --build build-native --parallel $(nproc) && \ 		
-	    cmake --install build-native && \ 		
-	    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF && \ 		
-	    cmake --build build-w64 --parallel $(nproc) && \ 		
-	    cmake --install build-w64 && \ 		
-	    source /opt/emsdk/emsdk_env.sh && \ 		
-	    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DSDL3_DIR=/usr/wasm32-unknown-emscripten/lib/cmake/SDL3 -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF && \ 		
-	    cmake --build build-wasm --parallel $(nproc) && \ 		
-	    cmake --install build-wasm && \ 		
-	    rm -rf /tmp/SDL3_image 		
-	
-		
-	RUN git clone --depth 1 https://github.com/libsdl-org/SDL_ttf.git /tmp/SDL3_ttf && \ 		
-	    cd /tmp/SDL3_ttf && \ 		
-	    sh external/download.sh && \ 		
-	    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DSDLTTF_SAMPLES=OFF -DSDLTTF_TESTS=OFF && \ 		
-	    cmake --build build-native --parallel $(nproc) && \ 		
-	    cmake --install build-native && \ 		
-	    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DSDLTTF_VENDORED=ON -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DSDLTTF_SAMPLES=OFF -DSDLTTF_TESTS=OFF && \ 		
-	    cmake --build build-w64 --parallel $(nproc) && \ 		
-	    cmake --install build-w64 && \ 		
-	    source /opt/emsdk/emsdk_env.sh && \ 		
-	    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DSDLTTF_VENDORED=ON -DSDL3_DIR=/usr/wasm32-unknown-emscripten/lib/cmake/SDL3 -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DSDLTTF_SAMPLES=OFF -DSDLTTF_TESTS=OFF && \ 		
-	    cmake --build build-wasm --parallel $(nproc) && \ 		
-	    cmake --install build-wasm && \ 		
-	    rm -rf /tmp/SDL3_ttf 		
-	
-		
-	RUN git clone --depth 1 https://gitlab.com/cmocka/cmocka.git /tmp/cmocka && \ 		
-	    cd /tmp/cmocka && \ 		
-	    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_EXAMPLES=OFF && \ 		
-	    cmake --build build-native --parallel $(nproc) && \ 		
-	    cmake --install build-native && \ 		
-	    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DHAVE_GCC_ATTRIBUTE_ACCESS=0 -DHAVE_GCC_ATTRIBUTE_ACCESS=0 -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DWITH_TESTING=OFF -DWITH_EXAMPLES=OFF && \ 		
-	    cmake --build build-w64 --parallel $(nproc) && \ 		
-	    cmake --install build-w64 && \ 		
-	    source /opt/emsdk/emsdk_env.sh && \ 		
-	    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DHAVE_GCC_ATTRIBUTE_ACCESS=0 -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DWITH_TESTING=OFF -DWITH_EXAMPLES=OFF && \ 		
-	    cmake --build build-wasm --parallel $(nproc) && \ 		
-	    cmake --install build-wasm && \ 		
-	    rm -rf /tmp/cmocka 		
-	
-		
-	ENV WINEPREFIX=/tmp/wine-prefix 		
-	ENV WINEARCH=win64 		
-	ENV WINEDEBUG=-all 		
-	
-		
-	RUN wineboot -u 		
-	
-		
-	RUN echo "int main() { return 0; }" > /tmp/dummy.c && \ 		
-	    emcc /tmp/dummy.c -flto=thin -O3 \ 		
-	         -s USE_ZLIB=1 \ 		
-	         -s USE_LIBPNG=1 \ 		
-	         -s USE_FREETYPE=1 \ 		
-	         -s USE_HARFBUZZ=1 \ 		
-	         -o /tmp/dummy.js && \ 		
-	    rm /tmp/dummy.* 		
-	
-		
-	RUN echo "int main() { return 0; }" > /tmp/dummy.c && \ 		
-	    emcc /tmp/dummy.c -O3 \ 		
-	         -s USE_ZLIB=1 \ 		
-	         -s USE_LIBPNG=1 \ 		
-	         -s USE_FREETYPE=1 \ 		
-	         -s USE_HARFBUZZ=1 \ 		
-	         -o /tmp/dummy.js && \ 		
-	    rm /tmp/dummy.*
+FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+
+ARG UBUNTU_SNAPSHOT=20261001T000000Z
+ARG APPIMAGETOOL_VERSION=1.9.1
+ARG LCOV_COBERTURA_VERSION=2.1.1
+ARG EMSDK_VERSION=6.0.11
+ARG EMSDK_NODE_VERSION=24.19.0
+ARG SDL3_VERSION=3.4.14
+ARG SDL3_IMAGE_VERSION=3.4.8
+ARG SDL3_TTF_VERSION=3.2.2
+ARG CMOCKA_VERSION=2.0.2
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get update --snapshot ${UBUNTU_SNAPSHOT} && \
+    apt-get install -y --no-install-recommends --snapshot ${UBUNTU_SNAPSHOT} \
+    bear clang clang-format clang-tidy cmake curl doxygen git llvm make ninja-build \
+    mingw-w64 python3-pip plantuml wine wine64 ca-certificates pkg-config xz-utils \
+    libfreetype-dev libharfbuzz-dev libasound2-dev libpulse-dev \
+    libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev \
+    libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libwayland-dev \
+    wayland-protocols libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev \
+    libgles2-mesa-dev libegl1-mesa-dev libvulkan-dev libdbus-1-dev libibus-1.0-dev \
+    libudev-dev libusb-1.0-0-dev libfribidi-dev libthai-dev lld lld-18 \
+    file libclang-rt-18-dev \
+    fuse \
+    gdb \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fLo /usr/bin/appimagetool \
+        https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-x86_64.AppImage && \
+    chmod +x /usr/bin/appimagetool
+
+RUN pip3 install --break-system-packages lcov_cobertura==${LCOV_COBERTURA_VERSION}
+
+RUN echo -e 'set(CMAKE_SYSTEM_NAME Windows) \
+	set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc) \
+	set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++) \
+	set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres) \
+	set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32) \
+	set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER) \
+	set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY) \
+	set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)' > /tmp/mingw64.cmake
+
+RUN git clone --depth 1 --branch ${EMSDK_VERSION} https://github.com/emscripten-core/emsdk.git /opt/emsdk && \
+    cd /opt/emsdk && \
+    ./emsdk install ${EMSDK_VERSION} && \
+    ./emsdk activate ${EMSDK_VERSION} && \
+    test -x /opt/emsdk/node/${EMSDK_NODE_VERSION}_64bit/bin/node
+
+ENV PATH="/opt/emsdk:/opt/emsdk/node/${EMSDK_NODE_VERSION}_64bit/bin:/opt/emsdk/upstream/emscripten:${PATH}"
+
+RUN git clone --depth 1 --branch release-${SDL3_VERSION} https://github.com/libsdl-org/SDL.git /tmp/SDL3 && \
+    cd /tmp/SDL3 && \
+    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF && \
+    cmake --build build-native --parallel $(nproc) && \
+    cmake --install build-native && \
+    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF && \
+    cmake --build build-w64 --parallel $(nproc) && \
+    cmake --install build-w64 && \
+    source /opt/emsdk/emsdk_env.sh && \
+    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF && \
+    cmake --build build-wasm --parallel $(nproc) && \
+    cmake --install build-wasm && \
+    rm -rf /tmp/SDL3
+
+RUN git clone --depth 1 --branch release-${SDL3_IMAGE_VERSION} https://github.com/libsdl-org/SDL_image.git /tmp/SDL3_image && \
+    cd /tmp/SDL3_image && \
+    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF && \
+    cmake --build build-native --parallel $(nproc) && \
+    cmake --install build-native && \
+    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF && \
+    cmake --build build-w64 --parallel $(nproc) && \
+    cmake --install build-w64 && \
+    source /opt/emsdk/emsdk_env.sh && \
+    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DSDL3_DIR=/usr/wasm32-unknown-emscripten/lib/cmake/SDL3 -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF && \
+    cmake --build build-wasm --parallel $(nproc) && \
+    cmake --install build-wasm && \
+    rm -rf /tmp/SDL3_image
+
+RUN git clone --depth 1 --branch release-${SDL3_TTF_VERSION} https://github.com/libsdl-org/SDL_ttf.git /tmp/SDL3_ttf && \
+    cd /tmp/SDL3_ttf && \
+    sh external/download.sh && \
+    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DSDLTTF_SAMPLES=OFF -DSDLTTF_TESTS=OFF && \
+    cmake --build build-native --parallel $(nproc) && \
+    cmake --install build-native && \
+    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DSDLTTF_VENDORED=ON -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DSDLTTF_SAMPLES=OFF -DSDLTTF_TESTS=OFF && \
+    cmake --build build-w64 --parallel $(nproc) && \
+    cmake --install build-w64 && \
+    source /opt/emsdk/emsdk_env.sh && \
+    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DSDLTTF_VENDORED=ON -DSDL3_DIR=/usr/wasm32-unknown-emscripten/lib/cmake/SDL3 -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DSDLTTF_SAMPLES=OFF -DSDLTTF_TESTS=OFF && \
+    cmake --build build-wasm --parallel $(nproc) && \
+    cmake --install build-wasm && \
+    rm -rf /tmp/SDL3_ttf
+
+RUN git clone --depth 1 --branch cmocka-${CMOCKA_VERSION} https://gitlab.com/cmocka/cmocka.git /tmp/cmocka && \
+    cd /tmp/cmocka && \
+    cmake -B build-native -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_EXAMPLES=OFF && \
+    cmake --build build-native --parallel $(nproc) && \
+    cmake --install build-native && \
+    cmake -B build-w64 -DCMAKE_BUILD_TYPE=Release -DHAVE_GCC_ATTRIBUTE_ACCESS=0 -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw64.cmake -DCMAKE_INSTALL_PREFIX=/usr/x86_64-w64-mingw32 -DWITH_TESTING=OFF -DWITH_EXAMPLES=OFF && \
+    cmake --build build-w64 --parallel $(nproc) && \
+    cmake --install build-w64 && \
+    source /opt/emsdk/emsdk_env.sh && \
+    emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release -DHAVE_GCC_ATTRIBUTE_ACCESS=0 -DCMAKE_INSTALL_PREFIX=/usr/wasm32-unknown-emscripten -DWITH_TESTING=OFF -DWITH_EXAMPLES=OFF && \
+    cmake --build build-wasm --parallel $(nproc) && \
+    cmake --install build-wasm && \
+    rm -rf /tmp/cmocka
+
+ENV WINEPREFIX=/tmp/wine-prefix
+ENV WINEARCH=win64
+ENV WINEDEBUG=-all
+
+RUN wineboot -u
+
+RUN echo "int main() { return 0; }" > /tmp/dummy.c && \
+    emcc /tmp/dummy.c -flto=thin -O3 \
+         -s USE_ZLIB=1 \
+         -s USE_LIBPNG=1 \
+         -s USE_FREETYPE=1 \
+         -s USE_HARFBUZZ=1 \
+         -o /tmp/dummy.js && \
+    rm /tmp/dummy.*
+
+RUN echo "int main() { return 0; }" > /tmp/dummy.c && \
+    emcc /tmp/dummy.c -O3 \
+         -s USE_ZLIB=1 \
+         -s USE_LIBPNG=1 \
+         -s USE_FREETYPE=1 \
+         -s USE_HARFBUZZ=1 \
+         -o /tmp/dummy.js && \
+    rm /tmp/dummy.*
